@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  
+    <title>Using NETCONSOLE to debug Linux (and Proxmox) Kernel Panics :: apalrd&#39;s adventures</title>
+  
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="In this post (and video) I&amp;rsquo;m going to setup Netconsole, so you can capture kernel panics and logs on headless systems. I know some of you are doing wild things with graphics drivers and passthrough, so hopefully this helps you debug them.
+Enable Now This option enables the module immediately, so you can use it before you do dangerous things. You Simply rebooting clears the setting, so you won&amp;rsquo;t continue to spam your kernel messages on the local network." />
+<meta name="keywords" content="" />
+<meta name="robots" content="noodp" />
+<link rel="canonical" href="https://www.apalrd.net/posts/2024/pve_netconsole/" />
+
+
+
+
+<link rel="stylesheet" href="https://www.apalrd.net/assets/style.css">
+
+
+
+
+
+
+<link rel="apple-touch-icon" href="https://www.apalrd.net/img/apple-touch-icon-192x192.png">
+
+  <link rel="shortcut icon" href="https://www.apalrd.net/img/favicon/orange.png">
+
+
+
+
+<meta property="og:locale" content="en" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Using NETCONSOLE to debug Linux (and Proxmox) Kernel Panics">
+<meta property="og:description" content="In this post (and video) I&amp;rsquo;m going to setup Netconsole, so you can capture kernel panics and logs on headless systems. I know some of you are doing wild things with graphics drivers and passthrough, so hopefully this helps you debug them.
+Enable Now This option enables the module immediately, so you can use it before you do dangerous things. You Simply rebooting clears the setting, so you won&amp;rsquo;t continue to spam your kernel messages on the local network." />
+<meta property="og:url" content="https://www.apalrd.net/posts/2024/pve_netconsole/" />
+<meta property="og:site_name" content="apalrd&#39;s adventures" />
+
+  
+    <meta property="og:image" content="https://www.apalrd.net/img/favicon/orange.png">
+  
+
+<meta property="og:image:width" content="2048">
+<meta property="og:image:height" content="1024">
+
+
+  <meta property="article:published_time" content="2024-07-05 01:00:05 -0300 -0300" />
+
+
+
+
+
+
+
+
+
+<link href="https://hackyderm.io/@apalrd" rel="me">
+
+</head>
+<body class="orange">
+
+
+<div class="container center">
+
+  <header class="header">
+  <div class="header__inner">
+    <div class="header__logo">
+      <a href="/">
+  <div class="logo">
+    apalrd
+  </div>
+</a>
+
+    </div>
+    
+      <div class="menu-trigger">menu</div>
+    
+  </div>
+  
+    <nav class="menu">
+  <ul class="menu__inner menu__inner--desktop">
+    
+      
+        
+          <li><a href="/about/">about</a></li>
+        
+      
+        
+          <li><a href="/resume/">resume</a></li>
+        
+      
+        
+          <li><a href="/tags/projects/">projects</a></li>
+        
+      
+        
+          <li><a href="/tags/">tags</a></li>
+        
+      
+        
+          <li><a href="https://www.youtube.com/c/apalrdsadventures">youtube</a></li>
+        
+      
+        
+          <li><a href="https://discord.gg/xJsaEukAr4">discord</a></li>
+        
+      
+        
+          <li><a href="https://hachyderm.io/@apalrd">mastodon</a></li>
+        
+      
+        
+          <li><a href="https://ko-fi.com/apalrd">ko-fi</a></li>
+        
+      
+        
+          <li><a href="/wishlist/">wishlist</a></li>
+        
+      
+      
+    
+
+    
+  </ul>
+
+  <ul class="menu__inner menu__inner--mobile">
+    
+      
+        <li><a href="/about/">about</a></li>
+      
+    
+      
+        <li><a href="/resume/">resume</a></li>
+      
+    
+      
+        <li><a href="/tags/projects/">projects</a></li>
+      
+    
+      
+        <li><a href="/tags/">tags</a></li>
+      
+    
+      
+        <li><a href="https://www.youtube.com/c/apalrdsadventures">youtube</a></li>
+      
+    
+      
+        <li><a href="https://discord.gg/xJsaEukAr4">discord</a></li>
+      
+    
+      
+        <li><a href="https://hachyderm.io/@apalrd">mastodon</a></li>
+      
+    
+      
+        <li><a href="https://ko-fi.com/apalrd">ko-fi</a></li>
+      
+    
+      
+        <li><a href="/wishlist/">wishlist</a></li>
+      
+    
+    
+  </ul>
+</nav>
+
+  
+</header>
+
+
+  <div class="content">
+    
+<div class="post">
+  <h1 class="post-title">
+    <a href="https://www.apalrd.net/posts/2024/pve_netconsole/">Using NETCONSOLE to debug Linux (and Proxmox) Kernel Panics</a></h1>
+  <div class="post-meta">
+    
+      <span class="post-date">
+        2024-07-05
+        
+           
+        
+      </span>
+    
+    
+    
+  </div>
+
+  
+  <span class="post-tags">
+    
+    #<a href="https://www.apalrd.net/tags/linux/">linux</a>&nbsp;
+    
+    #<a href="https://www.apalrd.net/tags/virtualization/">virtualization</a>&nbsp;
+    
+  </span>
+  
+  
+
+
+  
+
+  <div class="post-content"><div>
+        <p>In this post (and video) I&rsquo;m going to setup Netconsole, so you can capture kernel panics and logs on headless systems. I know some of you are doing wild things with graphics drivers and passthrough, so hopefully this helps you debug them.</p>
+<h2 id="enable-now">Enable Now<a href="#enable-now" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
+<p>This option enables the module immediately, so you can use it before you do dangerous things. You Simply rebooting clears the setting, so you won&rsquo;t continue to spam your kernel messages on the local network.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>modprobe netconsole netconsole<span style="color:#f92672">=</span>@/eth0,@&lt;destination_IP_address&gt;/
+</span></span></code></pre></div><p>If you want the full syntax of the argument, <a href="https://www.kernel.org/doc/html/latest/networking/netconsole.html#sender-and-receiver-configuration">you can find it here</a>. I&rsquo;m leaving a lot of things as defaults, so it will use the broadcast MAC and UDP port 6666.</p>
+<p>And to disable it without rebooting:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>rmmod netconsole
+</span></span></code></pre></div><h2 id="enable-on-boot">Enable On Boot<a href="#enable-on-boot" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
+<p>This will take effect on the next boot. Similar arguments to above, except we need to add this to the kernel commandline. Also, since the interface won&rsquo;t have this addresses early in boot the process, it&rsquo;s easiest if we use IPv6 link-local addresses. The kernel will generate one from the MAC address. The other option if you want to use legacy IPv4 is to set a source IP address in the kernel command line, this does not have to be the same address you use in the system.</p>
+<p>On Debian systems and some Proxmox systems, the file we need to edit is <code>/etc/default/grub</code>. On Proxox systems using UEFI boot but <em>not</em> secure boot, the file we need to edit is <code>/etc/kernel/cmdline</code>. If you don&rsquo;t have an <code>/etc/kernel/cmdline</code>, then you need to edit <code>/etc/default/grub</code>. Anyway, add this to the command line:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>netconsole<span style="color:#f92672">=</span>@/eth0,@&lt;destination_IPv6_LL_address&gt;/
+</span></span></code></pre></div><p>Then we need to run either <code>update-grub</code> (if you used <code>/etc/default/grub</code>) or <code>proxmox-boot-tool refresh</code> (if you used <code>/etc/kernel/cmdline</code>, and possibly on any Proxmox systems, it doesn&rsquo;t hurt)</p>
+<p>When you reboot, you can check <code>dmesg | grep netcon</code> to see if it started or if there were errors. If your Ethernet devices goes by multiple names in the boot process, try to <code>dmesg | grep eth0</code> and see what other names it goes by, and try those if it fails.</p>
+<h2 id="receive-netconsole-with-netcat">Receive Netconsole with Netcat<a href="#receive-netconsole-with-netcat" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
+<p>Now, we need to setup Netcat to listen to that broadcast. It&rsquo;s sending it to the broadcast MAC address (all F&rsquo;s), but to a unicast IP address, so anyone on the network will see this traffic with Wireshark. But netcat is easier. The default netcat version with Debian doesn&rsquo;t support IPv6, but you can <code>apt install ncat</code> for a better version, and it will install itself as the <code>nc</code> command.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e">#Call netcat to listen</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#-l = listen</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#-u = udp</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#-p 6666 = the default port for netconsole </span>
+</span></span><span style="display:flex;"><span>nc -l -u -p <span style="color:#ae81ff">6666</span>
+</span></span></code></pre></div><p>This can run as long as you want to monitor the netconsole output.</p>
+<h2 id="receive-netconsole-with-a-simple-systemd-unit">Receive Netconsole with a simple systemd unit<a href="#receive-netconsole-with-a-simple-systemd-unit" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
+<p>This is a super simple systemd service which will run netcat and save it to the systemd journal. Useful for cases when your crash is intermittent. You can run this on any machine on the network (of course you need to have netconsole set for this IP as well). Save this as <code>/etc/systemd/system/netconsole-log.service</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">[</span>Service<span style="color:#f92672">]</span>
+</span></span><span style="display:flex;"><span>ExecStart<span style="color:#f92672">=</span>/usr/bin/nc -l -u -p <span style="color:#ae81ff">6666</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>Install<span style="color:#f92672">]</span>
+</span></span><span style="display:flex;"><span>WantedBy<span style="color:#f92672">=</span>multi-user.target
+</span></span></code></pre></div><p>Then start it:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>systemctl daemon-reload
+</span></span><span style="display:flex;"><span>systemctl enable --now netconsole-log
+</span></span></code></pre></div><p>And view the logs:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>journalctl -xeu netconsole-log
+</span></span></code></pre></div><h2 id="panic">Panic<a href="#panic" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
+<p>If you want to panic the system, then you can send the sysreq &lsquo;c&rsquo; (as root):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>echo c &gt; /proc/sysrq-trigger
+</span></span></code></pre></div><p><a href="https://www.kernel.org/doc/html/latest/admin-guide/sysrq.html">Here&rsquo;s a list of all the sysreqs you can trigger for fun.</a></p>
+
+      </div></div>
+
+  
+  
+<div class="pagination">
+    <div class="pagination__title">
+        <span class="pagination__title-h">read other posts</span>
+        <hr />
+    </div>
+    <div class="pagination__buttons">
+        
+        
+        <span class="button next">
+            <a href="https://www.apalrd.net/posts/2024/pbs_image/">
+                <span class="button__text">Imaging a bare-metal system using Proxmox Backup Client</span>
+                <span class="button__icon">→</span>
+            </a>
+        </span>
+        
+    </div>
+</div>
+
+  
+
+  
+
+</div>
+
+  </div>
+
+  
+    <footer class="footer">
+  <div class="footer__inner">
+    
+      <div class="copyright copyright--user">
+      <span>© 2023 <SCRIPT TYPE="text/javascript">document.write('<a href=mailto:' + 'adventure@' + 'apalrd.net' + '>apalrd</a>')</SCRIPT></span>
+    
+    
+        <span>::<a href="/index.xml">rss feed</a></span>
+    
+        <span>:: Theme made by <a href="https://twitter.com/panr">panr</a></span>
+      </div>
+  </div>
+</footer>
+
+<script src="https://www.apalrd.net/assets/main.js"></script>
+<script src="https://www.apalrd.net/assets/prism.js"></script>
+
+
+
+
+
+
+
+  
+</div>
+
+</body>
+</html>
